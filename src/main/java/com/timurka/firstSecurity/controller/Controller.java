@@ -2,9 +2,10 @@ package com.timurka.firstSecurity.controller;
 
 import com.timurka.firstSecurity.Service;
 import com.timurka.firstSecurity.entity.Person;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import jakarta.annotation.security.RolesAllowed;
+import org.springframework.security.access.annotation.Secured;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,24 +15,42 @@ import java.util.Optional;
  */
 @RestController
 public class Controller {
-    private final Service service;
+    private final Service personService;
 
-    public Controller(Service service) {
-        this.service = service;
+    public PersonSecurityController(Service personService) {
+        this.personService = personService;
     }
 
     @GetMapping("/persons/by-city")
-    public List<Person> getPersons(@RequestParam("city") String city) {
-        return service.getPersonsByCity(city);
+    @Secured({"ROLE_READ"})
+    public List<Person> getPersonsByCity(@RequestParam(value = "city", required = false) String city) {
+        return personService.getPersonsByCity(city);
     }
+
 
     @GetMapping("/persons/by-age")
-    public List<Person> getAge(@RequestParam("age") int age) {
-        return service.getAge(age);
+    @PreAuthorize("hasAnyAuthority('read')")
+    public List<Person> getPersonsByAgeLess(@RequestParam(value = "age", required = false) int age) {
+        return personService.getPersonsByAgeLess(age);
     }
 
-    @GetMapping("/persons/by-fullname")
-    public Optional<Person> getNameSurname(@RequestParam("name") String name, @RequestParam("surname") String surname) {
-        return service.getNameSurname(name, surname);
+    @PostMapping("/persons/create")
+    @RolesAllowed({"ROLE_WRITE"})
+    public Person createPerson(@RequestBody Person person) {
+        return personService.createPerson(person);
+    }
+
+
+    @DeleteMapping("/persons/delete")
+    @PreAuthorize("hasRole('ROLE_WRITE') or hasRole('ROLE_DELETE')")
+    public String deletePerson(@RequestBody Person person) {
+        personService.deletePerson(person);
+        return "Person with " + person.getContact() + " was deleted";
+    }
+
+    @GetMapping("/persons/lk")
+    @PreAuthorize("#username == authentication.principal.username")
+    public String greetingUser(String username) {
+        return "Hello " + username + " from secure app!" ;
     }
 }
